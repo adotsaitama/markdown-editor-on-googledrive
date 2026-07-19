@@ -1,0 +1,61 @@
+// Thin wrapper over the Google Drive REST API (v3) for Phase 1 (read-only).
+// Reference: https://developers.google.com/drive/api/reference/rest/v3/files/get
+
+const DRIVE_FILES_ENDPOINT = "https://www.googleapis.com/drive/v3/files";
+
+export interface DriveFileMeta {
+  id: string;
+  name: string;
+  mimeType: string;
+}
+
+/** Error carrying the HTTP status so the UI can branch on 401 / 403 / 404. */
+export class DriveApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "DriveApiError";
+    this.status = status;
+  }
+}
+
+function authHeaders(accessToken: string): HeadersInit {
+  return { Authorization: `Bearer ${accessToken}` };
+}
+
+async function toApiError(res: Response): Promise<DriveApiError> {
+  // Drive returns a JSON error body; fall back to status text if it isn't JSON.
+  let detail = res.statusText;
+  try {
+    const body = (await res.json()) as { error?: { message?: string } };
+    if (body?.error?.message) detail = body.error.message;
+  } catch {
+    /* ignore non-JSON bodies */
+  }
+  return new DriveApiError(res.status, detail);
+}
+
+/** Fetch file metadata (name / mimeType) for display. */
+export async function fetchDriveFileMeta(
+  fileId: string,
+  accessToken: string,
+  signal?: AbortSignal,
+): Promise<DriveFileMeta> {
+  const url = `${DRIVE_FILES_ENDPOINT}/${encodeURIComponent(fileId)}?fields=id,name,mimeType`;
+  const res = await fetch(url, { headers: authHeaders(accessToken), signal });
+  if (!res.ok) throw await toApiError(res);
+  return (await res.json()) as DriveFileMeta;
+}
+
+/** Fetch the raw file content as text via `alt=media`. */
+export async function fetchDriveFileContent(
+  fileId: string,
+  accessToken: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const url = `${DRIVE_FILES_ENDPOINT}/${encodeURIComponent(fileId)}?alt=media`;
+  const res = await fetch(url, { headers: authHeaders(accessToken), signal });
+  if (!res.ok) throw await toApiError(res);
+  return res.text();
+}
