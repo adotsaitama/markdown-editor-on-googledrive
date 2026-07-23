@@ -65,6 +65,10 @@ export function HelpModal({ onClose }: HelpModalProps) {
               <strong>Mermaid</strong>: <code>```mermaid</code> のコードブロックはプレビューで図として描画されます。
             </li>
             <li>
+              <strong>インライン編集</strong>: 表示モードでブロックを<strong>ダブルクリック</strong>すると、
+              その場でソースを編集できます（書式ボタン・ショートカットも使用可）。
+            </li>
+            <li>
               <strong>Lint</strong>: 画面下部に markdownlint の結果を件数表示。
               クリックで詳細パネルが開き、各項目から該当行へジャンプできます。
             </li>

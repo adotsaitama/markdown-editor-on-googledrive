@@ -377,7 +377,7 @@ export default function App() {
               className="pane pane-preview"
               ref={setPreviewPane}
               aria-hidden={mode === "edit"}
-              onClick={handlePreviewClick}
+              onDoubleClick={handlePreviewClick}
             >
               <MarkdownPreview
                 content={deferredContent ?? ""}
