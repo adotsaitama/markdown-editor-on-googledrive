@@ -46,6 +46,16 @@
   margin-left: auto;
 }
 
+.theme-select {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.8rem;
+  padding: 0.3rem 0.35rem;
+  cursor: pointer;
+}
+
 .dirty-dot {
   display: inline-block;
   width: 8px;
@@ -335,7 +345,7 @@
   margin-top: 0.5rem;
   max-height: 30vh;
   overflow-y: auto;
-  background: var(--bg);
+  background: var(--bg-secondary, var(--bg));
 }
 
 .lint-panel-header {
@@ -704,9 +714,37 @@ kbd {
   cursor: pointer;
 }
 
-/* --- markdown body --- */
+/* --- markdown body (theme-token driven) --- */
 .markdown-body {
   font-size: 1rem;
+}
+
+.markdown-body ::selection {
+  background: var(--selection);
+}
+
+.markdown-body h1 {
+  color: var(--h1-color, inherit);
+}
+
+.markdown-body h2 {
+  color: var(--h2-color, inherit);
+}
+
+.markdown-body h3 {
+  color: var(--h3-color, inherit);
+}
+
+.markdown-body h4 {
+  color: var(--h4-color, inherit);
+}
+
+.markdown-body h5 {
+  color: var(--h5-color, inherit);
+}
+
+.markdown-body h6 {
+  color: var(--h6-color, inherit);
 }
 
 .markdown-body h1,
@@ -716,14 +754,15 @@ kbd {
 }
 
 .markdown-body pre {
-  background: rgba(127, 127, 127, 0.12);
+  background: var(--code-bg, rgba(127, 127, 127, 0.12));
   padding: 1rem;
   border-radius: 6px;
   overflow-x: auto;
 }
 
 .markdown-body code {
-  background: rgba(127, 127, 127, 0.15);
+  background: var(--code-bg, rgba(127, 127, 127, 0.15));
+  color: var(--inline-code-fg, inherit);
   padding: 0.15em 0.35em;
   border-radius: 4px;
   font-size: 0.9em;
@@ -731,6 +770,7 @@ kbd {
 
 .markdown-body pre code {
   background: none;
+  color: var(--code-fg, inherit);
   padding: 0;
 }
 
@@ -747,9 +787,11 @@ kbd {
 }
 
 .markdown-body blockquote {
-  border-left: 3px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--blockquote-bg, transparent);
+  border-radius: 0 6px 6px 0;
   margin-left: 0;
-  padding-left: 1rem;
+  padding: 0.35rem 1rem;
   color: var(--muted);
 }
 

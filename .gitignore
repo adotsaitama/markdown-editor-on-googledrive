@@ -17,6 +17,9 @@ client_secret_*.json
 # local tool settings
 .claude/
 
+# reference clone of the Obsidian theme (tokens are ported into src/themes/)
+Blue-Topaz_Obsidian-css/
+
 # logs
 npm-debug.log*
 *.log

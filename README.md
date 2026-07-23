@@ -97,6 +97,17 @@ src/
   main.tsx            # QueryClientProvider ルート
 ```
 
+## テーマ
+
+`src/themes/` のレジストリでカラーテーマを管理（ヘッダのセレクタで切替、light/dark 両対応）。
+
+- **Blue Topaz**（デフォルト）: Obsidian テーマ
+  [Blue-Topaz_Obsidian-css](https://github.com/whyt-byte/Blue-Topaz_Obsidian-css)
+  （MIT License, Copyright (c) 2020 whyt-byte）からデザイントークンを移植。
+- **Default**: GitHub 風の初期ルック。
+- 他の Obsidian テーマの追加は、`.theme-light` / `.theme-dark` の色値を
+  `AppTheme` として抽出し `src/themes/index.ts` に登録するだけ。
+
 ## ロードマップ
 
 - [x] **フェーズ1**: Drive からの起動・OAuth・閲覧（Read-Only）
