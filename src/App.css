@@ -1,7 +1,10 @@
 .app {
-  max-width: 900px;
+  max-width: 1500px;
   margin: 0 auto;
-  padding: 0 1rem 4rem;
+  padding: 0 1rem 1rem;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-header {
@@ -9,25 +12,14 @@
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
-  padding: 1rem 0;
+  padding: 0.75rem 0;
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
   background: var(--bg);
-  z-index: 1;
 }
 
 .app-header h1 {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   margin: 0;
-}
-
-.phase-badge {
-  font-size: 0.72rem;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.1rem 0.6rem;
 }
 
 .file-name {
@@ -40,10 +32,6 @@
   max-width: 40%;
 }
 
-.app-main {
-  padding-top: 1.5rem;
-}
-
 .dirty-dot {
   display: inline-block;
   width: 8px;
@@ -54,14 +42,21 @@
   vertical-align: middle;
 }
 
-/* --- toolbar (edit / preview + save) --- */
+.app-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0.75rem;
+}
+
+/* --- toolbar: mode icons | formatting | save + theme --- */
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  gap: 1rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .mode-tabs {
@@ -72,12 +67,15 @@
 }
 
 .tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: var(--bg);
   color: var(--muted);
-  padding: 0.35rem 1rem;
-  font-size: 0.85rem;
+  padding: 0.4rem 0.8rem;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .tab.active {
@@ -85,10 +83,63 @@
   color: var(--accent-fg);
 }
 
+.format-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-wrap: wrap;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: rgba(127, 127, 127, 0.15);
+}
+
+.icon-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.toolbar-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 0.35rem;
+}
+
+.heading-select {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.85rem;
+  padding: 0.25rem 0.3rem;
+  cursor: pointer;
+}
+
+.heading-select:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .save-area {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
+  margin-left: auto;
 }
 
 .save-button {
@@ -129,26 +180,40 @@
   padding: 0 0 0 0.35rem;
 }
 
-/* --- split view (editor | preview) --- */
-.app-split {
-  max-width: 1500px;
+/* --- workspace: always-mounted editor | preview panes ---
+   Mode switching animates the grid columns (1fr<->0fr), so transitions are
+   smooth and the editor keeps cursor/undo state across modes. */
+.workspace {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: 0;
+  transition: grid-template-columns 0.3s ease, gap 0.3s ease;
 }
 
-.split-view {
-  display: grid;
+.workspace.mode-edit {
+  grid-template-columns: 1fr 0fr;
+}
+
+.workspace.mode-split {
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-  /* header + toolbar + paddings; both panes scroll internally */
-  height: calc(100vh - 11rem);
-  min-height: 320px;
+}
+
+.workspace.mode-preview {
+  grid-template-columns: 0fr 1fr;
 }
 
 .pane {
   min-width: 0;
+  overflow: hidden;
+  transition: opacity 0.25s ease;
 }
 
-.pane-editor {
-  overflow: hidden;
+.mode-edit .pane-preview,
+.mode-preview .pane-editor {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .pane-editor .editor-container,
@@ -156,30 +221,23 @@
   height: 100%;
 }
 
-/* Beats `.editor-container .cm-editor { min-height: 60vh }` below. */
-.pane-editor .editor-container .cm-editor {
-  min-height: 0;
-}
-
 .pane-preview {
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 0 1rem;
+  padding: 0 1.25rem;
+}
+
+/* Readable line length when the preview is wide (preview-only mode). */
+.pane-preview .markdown-body {
+  max-width: 52rem;
+  margin: 0 auto;
 }
 
 @media (max-width: 900px) {
-  .split-view {
+  .workspace.mode-split {
     grid-template-columns: 1fr;
-    height: auto;
-  }
-
-  .pane-editor .editor-container .cm-editor {
-    height: 45vh;
-  }
-
-  .pane-preview {
-    max-height: 45vh;
+    grid-template-rows: 1fr 1fr;
   }
 }
 
@@ -187,7 +245,6 @@
 .editor-container .cm-editor {
   border: 1px solid var(--border);
   border-radius: 6px;
-  min-height: 60vh;
   font-size: 0.95rem;
 }
 

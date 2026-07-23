@@ -9,7 +9,7 @@
   --error-border: #f5c2c7;
   --error-fg: #b42318;
 
-  color-scheme: light dark;
+  color-scheme: light;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP",
     Helvetica, Arial, sans-serif;
   line-height: 1.6;
@@ -17,8 +17,23 @@
   background: var(--bg);
 }
 
+/* Manual dark theme (useTheme stamps data-theme on <html>). */
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --fg: #e6edf3;
+  --muted: #8b949e;
+  --border: #30363d;
+  --accent: #4493f8;
+  --error-bg: #2d1618;
+  --error-border: #5c2b2f;
+  --error-fg: #ff7b72;
+
+  color-scheme: dark;
+}
+
+/* OS preference as the pre-hydration fallback (before JS sets data-theme). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0d1117;
     --fg: #e6edf3;
     --muted: #8b949e;
@@ -27,6 +42,8 @@
     --error-bg: #2d1618;
     --error-border: #5c2b2f;
     --error-fg: #ff7b72;
+
+    color-scheme: dark;
   }
 }
 
@@ -43,4 +60,5 @@ body,
 
 body {
   background: var(--bg);
+  transition: background 0.25s ease, color 0.25s ease;
 }

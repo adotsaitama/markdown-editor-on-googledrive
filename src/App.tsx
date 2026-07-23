@@ -4,15 +4,24 @@ import { LoginButton } from "./components/LoginButton";
 import { ErrorFallback } from "./components/ErrorFallback";
 import { MarkdownPreview } from "./components/MarkdownPreview";
 import { MarkdownEditor } from "./components/MarkdownEditor";
+import { FormatToolbar } from "./components/FormatToolbar";
+import { IconEye, IconMoon, IconPencil, IconSplit, IconSun } from "./components/icons";
 import { useGoogleAuth } from "./hooks/useGoogleAuth";
 import { useDriveFile } from "./hooks/useDriveFile";
 import { useSaveDriveFile } from "./hooks/useSaveDriveFile";
 import { useScrollSync } from "./hooks/useScrollSync";
+import { useTheme } from "./hooks/useTheme";
 import { DriveApiError } from "./lib/driveApi";
 import { extractOpenFileId } from "./lib/driveState";
 import "./App.css";
 
 type ViewMode = "edit" | "split" | "preview";
+
+const MODES: Array<[ViewMode, string, () => JSX.Element]> = [
+  ["edit", "編集", IconPencil],
+  ["split", "分割", IconSplit],
+  ["preview", "表示", IconEye],
+];
 
 export default function App() {
   // The launch file id is fixed for this page load; derive it once.
@@ -21,6 +30,7 @@ export default function App() {
   const auth = useGoogleAuth();
   const file = useDriveFile(fileId, auth.accessToken);
   const save = useSaveDriveFile(fileId, auth.accessToken);
+  const { theme, toggle: toggleTheme } = useTheme();
 
   // Default to split view on screens wide enough to fit both panes.
   const [mode, setMode] = useState<ViewMode>(() =>
@@ -69,10 +79,9 @@ export default function App() {
   }, [isDirty]);
 
   return (
-    <div className={mode === "split" ? "app app-split" : "app"}>
+    <div className="app">
       <header className="app-header">
         <h1>Drive Markdown Editor</h1>
-        <span className="phase-badge">Phase 2 · 編集</span>
         {file.data && (
           <span className="file-name">
             {file.data.meta.name}
@@ -166,30 +175,30 @@ export default function App() {
       );
     }
 
-    // 6. Success — editor / preview with save toolbar.
+    // 6. Success — toolbar + always-mounted editor/preview panes.
+    //    Both panes stay in the DOM; mode switches animate the grid columns,
+    //    which also preserves editor state (cursor, undo history) across modes.
     if (file.data && currentContent !== null) {
       return (
         <>
           <div className="toolbar">
-            <div className="mode-tabs" role="tablist">
-              {(
-                [
-                  ["edit", "編集"],
-                  ["split", "分割"],
-                  ["preview", "プレビュー"],
-                ] as const
-              ).map(([value, label]) => (
+            <div className="mode-tabs" role="tablist" aria-label="表示モード">
+              {MODES.map(([value, label, Icon]) => (
                 <button
                   key={value}
                   role="tab"
                   aria-selected={mode === value}
                   className={mode === value ? "tab active" : "tab"}
+                  title={label}
+                  aria-label={label}
                   onClick={() => setMode(value)}
                 >
-                  {label}
+                  <Icon />
                 </button>
               ))}
             </div>
+
+            <FormatToolbar view={editorView} disabled={mode === "preview"} />
 
             <div className="save-area">
               {renderSaveStatus()}
@@ -201,35 +210,37 @@ export default function App() {
               >
                 {save.isPending ? "保存中…" : "保存"}
               </button>
+              <button
+                className="icon-button theme-toggle"
+                onClick={toggleTheme}
+                title={theme === "dark" ? "ライトモードに切り替え" : "ダークモードに切り替え"}
+                aria-label="テーマ切り替え"
+              >
+                {theme === "dark" ? <IconSun /> : <IconMoon />}
+              </button>
             </div>
           </div>
 
-          {mode === "edit" && (
-            <MarkdownEditor
-              // Remount if the saved file identity changes (not on each keystroke).
-              key={file.data.meta.id}
-              initialDoc={currentContent}
-              onChange={setDraft}
-              onSave={handleSave}
-            />
-          )}
-          {mode === "split" && (
-            <div className="split-view">
-              <div className="pane pane-editor">
-                <MarkdownEditor
-                  key={file.data.meta.id}
-                  initialDoc={currentContent}
-                  onChange={setDraft}
-                  onSave={handleSave}
-                  onViewReady={setEditorView}
-                />
-              </div>
-              <div className="pane pane-preview" ref={setPreviewPane}>
-                <MarkdownPreview content={deferredContent ?? ""} />
-              </div>
+          <div className={`workspace mode-${mode}`}>
+            <div className="pane pane-editor" aria-hidden={mode === "preview"}>
+              <MarkdownEditor
+                // Remount only if the file identity changes (not on each keystroke).
+                key={file.data.meta.id}
+                initialDoc={currentContent}
+                dark={theme === "dark"}
+                onChange={setDraft}
+                onSave={handleSave}
+                onViewReady={setEditorView}
+              />
             </div>
-          )}
-          {mode === "preview" && <MarkdownPreview content={currentContent} />}
+            <div
+              className="pane pane-preview"
+              ref={setPreviewPane}
+              aria-hidden={mode === "edit"}
+            >
+              <MarkdownPreview content={deferredContent ?? ""} />
+            </div>
+          </div>
         </>
       );
     }
