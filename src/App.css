@@ -538,18 +538,22 @@ kbd {
   padding: 0.45rem 0.75rem 0.25rem;
 }
 
-.inline-edit-popover textarea {
-  border: none;
-  outline: none;
-  background: rgba(127, 127, 127, 0.08);
-  color: var(--fg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.88rem;
-  line-height: 1.5;
-  padding: 0.5rem 0.75rem;
+.inline-edit-popover .format-toolbar {
+  padding: 0 0.5rem 0.4rem;
+  flex-wrap: wrap;
+}
+
+.inline-edit-editor {
   margin: 0 0.5rem;
-  border-radius: 6px;
-  resize: vertical;
+}
+
+.inline-edit-editor .cm-editor {
+  max-height: 40vh;
+  font-size: 0.9rem;
+}
+
+.inline-edit-editor .cm-scroller {
+  overflow-y: auto;
 }
 
 .inline-edit-actions {

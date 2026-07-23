@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { EditorView } from "@codemirror/view";
 import { LoginButton } from "./components/LoginButton";
 import { ErrorFallback } from "./components/ErrorFallback";
@@ -88,6 +88,8 @@ export default function App() {
     anchor: { top: number; left: number };
   }
   const [inlineEdit, setInlineEdit] = useState<InlineEditState | null>(null);
+  const inlineEditOpenRef = useRef(false);
+  inlineEditOpenRef.current = inlineEdit !== null;
 
   // Leaving preview mode dismisses the popover.
   useEffect(() => {
@@ -99,17 +101,39 @@ export default function App() {
       if (mode !== "preview" || !editorView) return;
       const target = e.target as HTMLElement;
       if (target.closest("a")) return; // let links behave normally
-      const el = target.closest<HTMLElement>("[data-line]");
-      if (!el) return;
-      const line = Number(el.dataset.line);
-      if (!Number.isFinite(line)) return;
 
+      // Resolve the clicked top-level block (direct child of the article) —
+      // the same unit the hover outline highlights.
+      const article = e.currentTarget.querySelector(".markdown-body");
+      if (!article) return;
+      let block: HTMLElement | null = null;
+      for (let n: HTMLElement | null = target; n && n !== article; n = n.parentElement) {
+        if (n.parentElement === article && n.dataset.line) {
+          block = n;
+          break;
+        }
+      }
+      if (!block) return;
+      const startLine = Number(block.dataset.line);
+      if (!Number.isFinite(startLine)) return;
+
+      // Block extent: up to the line before the next top-level block,
+      // trimmed of trailing blank lines.
       const doc = editorView.state.doc;
-      const startLine = Math.max(1, line - 2);
-      const endLine = Math.min(doc.lines, line + 2);
+      let endLine = doc.lines;
+      for (let sib = block.nextElementSibling; sib; sib = sib.nextElementSibling) {
+        const dl = (sib as HTMLElement).dataset?.line;
+        if (dl) {
+          endLine = Number(dl) - 1;
+          break;
+        }
+      }
+      endLine = Math.min(Math.max(startLine, endLine), doc.lines);
+      while (endLine > startLine && doc.line(endLine).text.trim() === "") endLine--;
+
       const from = doc.line(startLine).from;
       const to = doc.line(endLine).to;
-      const rect = el.getBoundingClientRect();
+      const rect = block.getBoundingClientRect();
       setInlineEdit({
         from,
         to,
@@ -140,11 +164,13 @@ export default function App() {
   }, [draft, savedContent, save]);
 
   // Ctrl/Cmd+S anywhere on the page (the editor also binds Mod-s itself).
+  // While the inline-edit popover is open, Ctrl+S applies the block edit
+  // instead (bound inside the popover), so the document save is suppressed.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        handleSave();
+        if (!inlineEditOpenRef.current) handleSave();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -363,6 +389,7 @@ export default function App() {
               startLine={inlineEdit.startLine}
               endLine={inlineEdit.endLine}
               initialText={inlineEdit.text}
+              dark={theme === "dark"}
               onApply={applyInlineEdit}
               onClose={() => setInlineEdit(null)}
             />

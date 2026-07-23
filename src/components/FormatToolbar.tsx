@@ -24,6 +24,8 @@ interface FormatToolbarProps {
   view: EditorView | null;
   /** Disabled entirely while the editor pane is hidden (preview mode). */
   disabled: boolean;
+  /** Hide the whole-document Prettier button (e.g. in the inline editor). */
+  showFormatDoc?: boolean;
 }
 
 interface ToolbarItem {
@@ -63,7 +65,7 @@ const LAYOUT: ToolbarItem[][] = [
 
 const NOOP_CTX = { save: () => {} };
 
-export function FormatToolbar({ view, disabled }: FormatToolbarProps) {
+export function FormatToolbar({ view, disabled, showFormatDoc = true }: FormatToolbarProps) {
   const off = disabled || !view;
   const shortcuts = useMemo(() => getShortcuts(), []);
 
@@ -99,8 +101,12 @@ export function FormatToolbar({ view, disabled }: FormatToolbarProps) {
         </Fragment>
       ))}
       <TablePicker view={view} disabled={off} tooltip={tooltip("table")} />
-      <span className="toolbar-sep" />
-      {renderButton({ id: "formatDoc", icon: <IconWand /> })}
+      {showFormatDoc && (
+        <>
+          <span className="toolbar-sep" />
+          {renderButton({ id: "formatDoc", icon: <IconWand /> })}
+        </>
+      )}
     </div>
   );
 }
