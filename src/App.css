@@ -395,22 +395,54 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
+  animation: overlay-in 0.25s ease-out;
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .modal {
   background: var(--bg);
   color: var(--fg);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  width: min(640px, calc(100vw - 2rem));
+  border-radius: 12px;
+  width: min(1000px, calc(100vw - 3rem));
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 16px 56px rgba(0, 0, 0, 0.35);
+  /* Soft entrance: fades and floats up, signaling a different mode. */
+  animation: modal-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+}
+
+/* Wide two-column layout: usage guide | shortcut table. */
+.modal-columns {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 0 2.5rem;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .modal-columns {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
 }
 
 .modal-header {

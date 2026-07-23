@@ -37,8 +37,9 @@ export function HelpModal({ onClose }: HelpModalProps) {
             ×
           </button>
         </div>
-        <div className="modal-body">
-          <h3>このエディタについて</h3>
+        <div className="modal-body modal-columns">
+          <section>
+            <h3>このエディタについて</h3>
           <p>
             Google Drive の「アプリで開く」から <code>.md</code> ファイルを開いて、
             閲覧・編集・上書き保存できる Markdown エディタです。
@@ -68,8 +69,10 @@ export function HelpModal({ onClose }: HelpModalProps) {
               <strong>整形</strong>: 🪄 ボタンで Prettier による文書全体の整形（元に戻す可能）。
             </li>
           </ul>
+          </section>
 
-          <h3>キーボードショートカット</h3>
+          <section>
+            <h3>キーボードショートカット</h3>
           <table className="shortcut-table">
             <tbody>
               {EDITOR_COMMANDS.filter((c) => shortcuts[c.id]).map((entry) => {
@@ -94,9 +97,10 @@ export function HelpModal({ onClose }: HelpModalProps) {
               </tr>
             </tbody>
           </table>
-          <p className="help-note">
-            ショートカットの割り当ては設定として管理されています（将来のバージョンでカスタマイズに対応予定）。
-          </p>
+            <p className="help-note">
+              ショートカットの割り当ては設定として管理されています（将来のバージョンでカスタマイズに対応予定）。
+            </p>
+          </section>
         </div>
       </div>
     </div>
