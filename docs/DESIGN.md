@@ -386,7 +386,46 @@ src/
 全依存は MIT / BSD-3-Clause（許諾型のみ）。Blue Topaz からの色移植は MIT 帰属を
 `themes/blueTopaz.ts` ヘッダと README に明記。コピーレフト系依存は追加しないこと。
 
-## 16. 既知の制約・将来課題
+## 16. ログ設計（要件・未実装分を含む）
+
+### 方針
+- **通常ログは Console のみ**（`console.debug/info/warn/error`）。ユーザーの作業を妨げない。
+- **致命的エラーはユーザーにも必ず通知**する。Console を開かないユーザーが
+  「何かが失敗した」ことに気づけない状態を作らない。
+
+### 分類
+
+| レベル | 対象例 | Console | ユーザー通知 |
+|---|---|---|---|
+| debug/info | 認証成功、ファイル読込完了、保存成功、遅延モジュールのロード | ✓ | 不要（保存は既存のステータス表示で十分） |
+| warn | lint 実行失敗、mermaid 構文エラー、画像解決不能（drive.file 不可視） | ✓ | 既存のインライン表示（エラーノート/チップ）で十分 |
+| **fatal** | ファイル読込失敗（401/403/404/network）、**保存失敗**、画像アップロード失敗、未捕捉例外・unhandledrejection | ✓ `console.error` | **必須**。画面内の通知（バナー/トースト）で明示 |
+
+### 実装ガイドライン（再作成時）
+- `lib/logger.ts` のような薄いラッパを設け、`logger.error(scope, err)` が
+  console 出力と通知系（トースト等）の両方に配線されるようにする。散在する
+  `console.error` / `window.alert` 直呼びは避ける（現実装の alert は暫定）。
+- トークン・ファイル内容・個人情報は**ログに出さない**（エラーの status / メッセージのみ）。
+- `window.onerror` / `unhandledrejection` を捕捉し、想定外の例外も
+  「予期しないエラーが発生しました」として fatal 通知に流す。
+
+## 17. 環境情報の取り扱い（再作成時）
+
+以下の値は**本設計書・リポジトリに記載しない**（機密または環境固有のため）。
+再作成セッションの開始時に、コンソール/プロンプトで開発担当（LLM）へ直接提示すること。
+
+- 本番 URL / Pages プロジェクト名 / Cloudflare アカウント ID
+- Cloudflare 認証（wrangler のログイン済みトークンを使う旨の指示で足りる。値は不要）
+- GCP プロジェクト ID / OAuth クライアント ID（`VITE_GOOGLE_CLIENT_ID`）
+- OAuth テストユーザーのメールアドレス
+- GitHub リポジトリ URL
+
+注意: Drive API の **Drive UI Integration は GCP プロジェクトにつき 1 設定**。
+別名アプリ（例: `Markdown for Drive`）を「アプリで開く」に並べたい場合は、
+新規 GCP プロジェクト一式（Drive API 有効化 → OAuth クライアント → Drive UI
+Integration → テストユーザー登録）を用意すること。
+
+## 18. 既知の制約・将来課題
 
 - drive.file による不可視問題（§3）。フルスコープ化が escape hatch。
 - 画像サイズ指定（rehype-raw + sanitize で `<img width>` 対応する余地）。
