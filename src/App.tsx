@@ -34,7 +34,7 @@ export default function App() {
   const auth = useGoogleAuth();
   const file = useDriveFile(fileId, auth.accessToken);
   const save = useSaveDriveFile(fileId, auth.accessToken);
-  const { theme, toggle: toggleTheme, themeId, setThemeId, themes } = useTheme();
+  const { theme, toggle: toggleTheme } = useTheme();
 
   // Default to split view on screens wide enough to fit both panes.
   const [mode, setMode] = useState<ViewMode>(() =>
@@ -244,19 +244,6 @@ export default function App() {
               </div>
             </>
           )}
-          <select
-            className="theme-select"
-            value={themeId}
-            onChange={(e) => setThemeId(e.target.value)}
-            title="カラーテーマ"
-            aria-label="カラーテーマ"
-          >
-            {themes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
           <button
             className="icon-button"
             onClick={() => setHelpOpen(true)}
