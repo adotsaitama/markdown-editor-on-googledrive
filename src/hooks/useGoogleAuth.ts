@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Requested scope: only files the user opens/creates with this app.
+// Requested scopes:
+// - drive.file: only files the user opens/creates with this app.
+// - drive.install: lets the app appear in Drive's "Open with" menu
+//   (granting it acts as the per-user install for the Drive UI integration).
 // Reference: https://developers.google.com/drive/api/guides/api-specific-auth
-const SCOPE = "https://www.googleapis.com/auth/drive.file";
+const SCOPE =
+  "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install";
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
