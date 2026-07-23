@@ -146,6 +146,13 @@ export const IconMinus = () => (
   </Svg>
 );
 
+export const IconWand = () => (
+  <Svg>
+    <path d="M15 4V2M15 10V8M11.5 5.5h-2M20.5 5.5h-2M17.8 8.3l1.4 1.4M17.8 2.7l1.4-1.4M12.2 2.7l-1.4-1.4" />
+    <path d="M14 7 3 18l3 3L17 10Z" />
+  </Svg>
+);
+
 export const IconQuote = () => (
   <Svg>
     <path d="M3 12h6v6H5a2 2 0 0 1-2-2v-4Zm0 0c0-4 2-6 5-7" />

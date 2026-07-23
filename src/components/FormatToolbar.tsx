@@ -12,6 +12,7 @@ import {
   toggleOrderedList,
   toggleTaskList,
 } from "../lib/markdownCommands";
+import { formatDocument } from "../lib/formatDocument";
 import {
   IconBold,
   IconCheckSquare,
@@ -26,6 +27,7 @@ import {
   IconStrikethrough,
   IconTable,
   IconUndo,
+  IconWand,
 } from "./icons";
 
 interface FormatToolbarProps {
@@ -83,6 +85,15 @@ const GROUPS: Item[][] = [
   ],
 ];
 
+/** Document-wide actions appended after the table picker. */
+const TAIL_ITEMS: Item[] = [
+  {
+    label: "文書全体を整形 (Prettier)",
+    icon: <IconWand />,
+    action: (v) => void formatDocument(v),
+  },
+];
+
 const PICKER_COLS = 6;
 const PICKER_ROWS = 5;
 
@@ -112,6 +123,20 @@ export function FormatToolbar({ view, disabled }: FormatToolbarProps) {
         </Fragment>
       ))}
       <TablePicker view={view} disabled={off} />
+      <span className="toolbar-sep" />
+      {TAIL_ITEMS.map((item) => (
+        <button
+          key={item.label}
+          type="button"
+          className="icon-button"
+          title={item.label}
+          aria-label={item.label}
+          disabled={off}
+          onClick={() => view && item.action(view)}
+        >
+          {item.icon}
+        </button>
+      ))}
     </div>
   );
 }

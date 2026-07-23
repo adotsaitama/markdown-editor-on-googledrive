@@ -11,7 +11,17 @@ export interface DriveFileMeta {
   mimeType: string;
   /** RFC 3339 timestamp of the last content modification. */
   modifiedTime?: string;
+  /** Parent folder ids (needed to locate the sibling `images/` folder). */
+  parents?: string[];
 }
+
+export interface DriveChild {
+  id: string;
+  name: string;
+}
+
+const FOLDER_MIME = "application/vnd.google-apps.folder";
+const META_FIELDS = "id,name,mimeType,modifiedTime,parents";
 
 /** Error carrying the HTTP status so the UI can branch on 401 / 403 / 404. */
 export class DriveApiError extends Error {
@@ -46,7 +56,7 @@ export async function fetchDriveFileMeta(
   accessToken: string,
   signal?: AbortSignal,
 ): Promise<DriveFileMeta> {
-  const url = `${DRIVE_FILES_ENDPOINT}/${encodeURIComponent(fileId)}?fields=id,name,mimeType,modifiedTime`;
+  const url = `${DRIVE_FILES_ENDPOINT}/${encodeURIComponent(fileId)}?fields=${META_FIELDS}`;
   const res = await fetch(url, { headers: authHeaders(accessToken), signal });
   if (!res.ok) throw await toApiError(res);
   return (await res.json()) as DriveFileMeta;
@@ -61,7 +71,7 @@ export async function updateDriveFileContent(
   accessToken: string,
   content: string,
 ): Promise<DriveFileMeta> {
-  const url = `${DRIVE_UPLOAD_ENDPOINT}/${encodeURIComponent(fileId)}?uploadType=media&fields=id,name,mimeType,modifiedTime`;
+  const url = `${DRIVE_UPLOAD_ENDPOINT}/${encodeURIComponent(fileId)}?uploadType=media&fields=${META_FIELDS}`;
   const res = await fetch(url, {
     method: "PATCH",
     headers: {
@@ -72,6 +82,86 @@ export async function updateDriveFileContent(
   });
   if (!res.ok) throw await toApiError(res);
   return (await res.json()) as DriveFileMeta;
+}
+
+/**
+ * Find a direct child of `parentId` by exact name (optionally by MIME type).
+ * NOTE: with the drive.file scope this only sees files this app created or
+ * opened — externally created files/folders are invisible.
+ */
+export async function findChildByName(
+  parentId: string,
+  name: string,
+  accessToken: string,
+  mimeType?: string,
+): Promise<DriveChild | null> {
+  const escaped = name.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  let q = `'${parentId}' in parents and name = '${escaped}' and trashed = false`;
+  if (mimeType) q += ` and mimeType = '${mimeType}'`;
+  const url = `${DRIVE_FILES_ENDPOINT}?q=${encodeURIComponent(q)}&fields=files(id,name)&pageSize=1`;
+  const res = await fetch(url, { headers: authHeaders(accessToken) });
+  if (!res.ok) throw await toApiError(res);
+  const body = (await res.json()) as { files?: DriveChild[] };
+  return body.files?.[0] ?? null;
+}
+
+/** Find the `images` sibling folder of the given parent. */
+export function findImagesFolder(parentId: string, accessToken: string) {
+  return findChildByName(parentId, "images", accessToken, FOLDER_MIME);
+}
+
+/** Create a folder under `parentId`. */
+export async function createFolder(
+  parentId: string,
+  name: string,
+  accessToken: string,
+): Promise<DriveChild> {
+  const res = await fetch(`${DRIVE_FILES_ENDPOINT}?fields=id,name`, {
+    method: "POST",
+    headers: { ...authHeaders(accessToken), "Content-Type": "application/json" },
+    body: JSON.stringify({ name, mimeType: FOLDER_MIME, parents: [parentId] }),
+  });
+  if (!res.ok) throw await toApiError(res);
+  return (await res.json()) as DriveChild;
+}
+
+/** Upload a binary file (e.g. a pasted image) into a folder via multipart upload. */
+export async function uploadBinaryFile(
+  parentId: string,
+  name: string,
+  blob: Blob,
+  accessToken: string,
+): Promise<DriveChild> {
+  const boundary = `md-editor-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const metadata = { name, parents: [parentId] };
+  const body = new Blob(
+    [
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
+      JSON.stringify(metadata),
+      `\r\n--${boundary}\r\nContent-Type: ${blob.type || "application/octet-stream"}\r\n\r\n`,
+      blob,
+      `\r\n--${boundary}--`,
+    ],
+    { type: `multipart/related; boundary=${boundary}` },
+  );
+  const res = await fetch(`${DRIVE_UPLOAD_ENDPOINT}?uploadType=multipart&fields=id,name`, {
+    method: "POST",
+    headers: {
+      ...authHeaders(accessToken),
+      "Content-Type": `multipart/related; boundary=${boundary}`,
+    },
+    body,
+  });
+  if (!res.ok) throw await toApiError(res);
+  return (await res.json()) as DriveChild;
+}
+
+/** Fetch a file's binary content (for resolving image previews). */
+export async function fetchDriveFileBlob(fileId: string, accessToken: string): Promise<Blob> {
+  const url = `${DRIVE_FILES_ENDPOINT}/${encodeURIComponent(fileId)}?alt=media`;
+  const res = await fetch(url, { headers: authHeaders(accessToken) });
+  if (!res.ok) throw await toApiError(res);
+  return res.blob();
 }
 
 /** Fetch the raw file content as text via `alt=media`. */

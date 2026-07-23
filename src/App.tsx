@@ -11,6 +11,8 @@ import { useDriveFile } from "./hooks/useDriveFile";
 import { useSaveDriveFile } from "./hooks/useSaveDriveFile";
 import { useScrollSync } from "./hooks/useScrollSync";
 import { useTheme } from "./hooks/useTheme";
+import { useDriveImages } from "./hooks/useDriveImages";
+import { useMarkdownLint } from "./hooks/useMarkdownLint";
 import { DriveApiError } from "./lib/driveApi";
 import { extractOpenFileId } from "./lib/driveState";
 import "./App.css";
@@ -49,6 +51,25 @@ export default function App() {
   // Low-priority preview updates keep typing responsive on large documents.
   const deferredContent = useDeferredValue(currentContent);
   const isDirty = draft !== null && savedContent !== null && draft !== savedContent;
+
+  // Pasted-image upload + relative `images/...` resolution for the preview.
+  const { uploadImage, resolveImage } = useDriveImages(file.data?.meta, auth.accessToken);
+
+  // Background lint (debounced, lazy-loaded); details live in the bottom panel.
+  const lintIssues = useMarkdownLint(currentContent);
+  const [lintOpen, setLintOpen] = useState(false);
+
+  const jumpToLine = useCallback(
+    (line: number) => {
+      if (!editorView) return;
+      setMode((m) => (m === "preview" ? "split" : m));
+      const doc = editorView.state.doc;
+      const l = doc.line(Math.min(Math.max(1, line), doc.lines));
+      editorView.dispatch({ selection: { anchor: l.from }, scrollIntoView: true });
+      editorView.focus();
+    },
+    [editorView],
+  );
 
   const handleSave = useCallback(() => {
     if (draft === null || draft === savedContent || save.isPending) return;
@@ -250,6 +271,7 @@ export default function App() {
                 onChange={setDraft}
                 onSave={handleSave}
                 onViewReady={setEditorView}
+                onPasteImage={uploadImage}
               />
             </div>
             <div
@@ -257,9 +279,54 @@ export default function App() {
               ref={setPreviewPane}
               aria-hidden={mode === "edit"}
             >
-              <MarkdownPreview content={deferredContent ?? ""} />
+              <MarkdownPreview content={deferredContent ?? ""} resolveImage={resolveImage} />
             </div>
           </div>
+
+          {lintOpen && (
+            <div className="lint-panel">
+              <div className="lint-panel-header">
+                <span>Lint 結果（markdownlint）</span>
+                <button
+                  className="icon-button"
+                  aria-label="閉じる"
+                  onClick={() => setLintOpen(false)}
+                >
+                  ×
+                </button>
+              </div>
+              {lintIssues.length === 0 ? (
+                <p className="lint-empty">問題は見つかりませんでした 🎉</p>
+              ) : (
+                <ul className="lint-list">
+                  {lintIssues.map((issue, i) => (
+                    <li key={i}>
+                      <button className="lint-item" onClick={() => jumpToLine(issue.line)}>
+                        <span className="lint-line">{issue.line}行</span>
+                        <span className="lint-rule">{issue.rule}</span>
+                        <span>
+                          {issue.description}
+                          {issue.detail ? ` — ${issue.detail}` : ""}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          <footer className="status-bar">
+            <button
+              className={lintIssues.length > 0 ? "lint-summary warn" : "lint-summary"}
+              onClick={() => setLintOpen((o) => !o)}
+              aria-expanded={lintOpen}
+              title="クリックで詳細パネルを開閉"
+            >
+              {lintIssues.length > 0 ? `⚠ Lint: ${lintIssues.length} 件` : "✓ Lint: 問題なし"}
+            </button>
+            <span className="char-count">{currentContent.length.toLocaleString()} 文字</span>
+          </footer>
         </>
       );
     }
