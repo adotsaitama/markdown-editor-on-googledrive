@@ -9,6 +9,8 @@ export interface DriveFileMeta {
   id: string;
   name: string;
   mimeType: string;
+  /** RFC 3339 timestamp of the last content modification. */
+  modifiedTime?: string;
 }
 
 /** Error carrying the HTTP status so the UI can branch on 401 / 403 / 404. */
@@ -44,7 +46,7 @@ export async function fetchDriveFileMeta(
   accessToken: string,
   signal?: AbortSignal,
 ): Promise<DriveFileMeta> {
-  const url = `${DRIVE_FILES_ENDPOINT}/${encodeURIComponent(fileId)}?fields=id,name,mimeType`;
+  const url = `${DRIVE_FILES_ENDPOINT}/${encodeURIComponent(fileId)}?fields=id,name,mimeType,modifiedTime`;
   const res = await fetch(url, { headers: authHeaders(accessToken), signal });
   if (!res.ok) throw await toApiError(res);
   return (await res.json()) as DriveFileMeta;
@@ -59,7 +61,7 @@ export async function updateDriveFileContent(
   accessToken: string,
   content: string,
 ): Promise<DriveFileMeta> {
-  const url = `${DRIVE_UPLOAD_ENDPOINT}/${encodeURIComponent(fileId)}?uploadType=media&fields=id,name,mimeType`;
+  const url = `${DRIVE_UPLOAD_ENDPOINT}/${encodeURIComponent(fileId)}?uploadType=media&fields=id,name,mimeType,modifiedTime`;
   const res = await fetch(url, {
     method: "PATCH",
     headers: {

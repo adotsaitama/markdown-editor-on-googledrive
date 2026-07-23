@@ -78,16 +78,71 @@ export default function App() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [isDirty]);
 
+  // Mirror the document name into the browser tab.
+  const docName = file.data?.meta.name;
+  useEffect(() => {
+    document.title = docName ? `${docName} - Drive Markdown Editor` : "Drive Markdown Editor";
+  }, [docName]);
+
+  const hasFile = Boolean(file.data && currentContent !== null);
+
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Drive Markdown Editor</h1>
-        {file.data && (
-          <span className="file-name">
-            {file.data.meta.name}
+        <div className="title-block">
+          <h1 className="doc-title">
+            {docName ?? "Drive Markdown Editor"}
             {isDirty && <span className="dirty-dot" title="未保存の変更があります" />}
-          </span>
-        )}
+          </h1>
+          {file.data?.meta.modifiedTime && (
+            <span className="doc-meta">
+              最終保存{" "}
+              {new Date(file.data.meta.modifiedTime).toLocaleString("ja-JP", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </span>
+          )}
+        </div>
+
+        <div className="header-actions">
+          {hasFile && (
+            <>
+              {renderSaveStatus()}
+              <button
+                className="save-button"
+                onClick={handleSave}
+                disabled={!isDirty || save.isPending}
+                title="Ctrl+S / ⌘S"
+              >
+                {save.isPending ? "保存中…" : "保存"}
+              </button>
+              <div className="mode-tabs" role="tablist" aria-label="表示モード">
+                {MODES.map(([value, label, Icon]) => (
+                  <button
+                    key={value}
+                    role="tab"
+                    aria-selected={mode === value}
+                    className={mode === value ? "tab active" : "tab"}
+                    title={label}
+                    aria-label={label}
+                    onClick={() => setMode(value)}
+                  >
+                    <Icon />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <button
+            className="icon-button theme-toggle"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "ライトモードに切り替え" : "ダークモードに切り替え"}
+            aria-label="テーマ切り替え"
+          >
+            {theme === "dark" ? <IconSun /> : <IconMoon />}
+          </button>
+        </div>
       </header>
 
       <main className="app-main">{renderBody()}</main>
@@ -182,43 +237,7 @@ export default function App() {
       return (
         <>
           <div className="toolbar">
-            <div className="mode-tabs" role="tablist" aria-label="表示モード">
-              {MODES.map(([value, label, Icon]) => (
-                <button
-                  key={value}
-                  role="tab"
-                  aria-selected={mode === value}
-                  className={mode === value ? "tab active" : "tab"}
-                  title={label}
-                  aria-label={label}
-                  onClick={() => setMode(value)}
-                >
-                  <Icon />
-                </button>
-              ))}
-            </div>
-
             <FormatToolbar view={editorView} disabled={mode === "preview"} />
-
-            <div className="save-area">
-              {renderSaveStatus()}
-              <button
-                className="save-button"
-                onClick={handleSave}
-                disabled={!isDirty || save.isPending}
-                title="Ctrl+S / ⌘S"
-              >
-                {save.isPending ? "保存中…" : "保存"}
-              </button>
-              <button
-                className="icon-button theme-toggle"
-                onClick={toggleTheme}
-                title={theme === "dark" ? "ライトモードに切り替え" : "ダークモードに切り替え"}
-                aria-label="テーマ切り替え"
-              >
-                {theme === "dark" ? <IconSun /> : <IconMoon />}
-              </button>
-            </div>
           </div>
 
           <div className={`workspace mode-${mode}`}>

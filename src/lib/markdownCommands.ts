@@ -104,6 +104,67 @@ export function toggleOrderedList(view: EditorView): boolean {
   return true;
 }
 
+const TASK_RE = /^- \[[ xX]\]\s/;
+
+/** Toggle a task-list checkbox (`- [ ] `) on all selected lines. */
+export function toggleTaskList(view: EditorView): boolean {
+  const lines = selectedLines(view);
+  const nonEmpty = lines.filter((l) => l.text.trim().length > 0 || lines.length === 1);
+  if (nonEmpty.length === 0) return false;
+  const allHave = nonEmpty.every((l) => TASK_RE.test(l.text));
+
+  const changes = nonEmpty.map((l) => {
+    if (allHave) {
+      const m = TASK_RE.exec(l.text) as RegExpExecArray;
+      return { from: l.from, to: l.from + m[0].length };
+    }
+    // Upgrade an existing bullet instead of double-prefixing it.
+    if (l.text.startsWith("- ")) {
+      return { from: l.from + 2, insert: "[ ] " };
+    }
+    return { from: l.from, insert: "- [ ] " };
+  });
+  view.dispatch({ changes, scrollIntoView: true, userEvent: "input" });
+  view.focus();
+  return true;
+}
+
+/**
+ * Wrap the selection as a Markdown link. With a selection the cursor lands in
+ * the URL slot (`[text](|)`); with none it lands in the text slot (`[|]()`).
+ */
+export function insertLink(view: EditorView): boolean {
+  const tr = view.state.changeByRange((range) => {
+    const text = view.state.sliceDoc(range.from, range.to);
+    const insert = `[${text}]()`;
+    const cursor = text
+      ? range.from + text.length + 3 // inside the parens
+      : range.from + 1; // inside the brackets
+    return {
+      changes: [{ from: range.from, to: range.to, insert }],
+      range: EditorSelection.cursor(cursor),
+    };
+  });
+  view.dispatch(tr, { scrollIntoView: true, userEvent: "input" });
+  view.focus();
+  return true;
+}
+
+/** Insert a horizontal rule (`---`) on a new line after the current one. */
+export function insertHorizontalRule(view: EditorView): boolean {
+  const { state } = view;
+  const line = state.doc.lineAt(state.selection.main.head);
+  const insert = (line.text.trim().length > 0 ? "\n\n" : "") + "---\n";
+  view.dispatch({
+    changes: { from: line.to, insert },
+    selection: { anchor: line.to + insert.length },
+    scrollIntoView: true,
+    userEvent: "input",
+  });
+  view.focus();
+  return true;
+}
+
 const HEADING_RE = /^#{1,6}\s+/;
 
 /**

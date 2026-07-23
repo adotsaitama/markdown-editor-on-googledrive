@@ -5,7 +5,7 @@ import { Compartment, EditorState } from "@codemirror/state";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { toggleInlineMark } from "../lib/markdownCommands";
+import { insertLink, toggleInlineMark } from "../lib/markdownCommands";
 
 interface MarkdownEditorProps {
   /** Document shown when the editor mounts. Later changes do not reset the view. */
@@ -60,6 +60,7 @@ export function MarkdownEditor({
           },
           { key: "Mod-b", run: (v) => toggleInlineMark(v, "**") },
           { key: "Mod-i", run: (v) => toggleInlineMark(v, "*") },
+          { key: "Mod-k", preventDefault: true, run: (v) => insertLink(v) },
         ]),
         basicSetup,
         markdown({ base: markdownLanguage, codeLanguages: languages }),
