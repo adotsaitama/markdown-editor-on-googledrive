@@ -13,6 +13,8 @@ interface MarkdownEditorProps {
   onChange: (doc: string) => void;
   /** Called on Mod-s (Ctrl/Cmd+S) inside the editor. */
   onSave: () => void;
+  /** Receives the EditorView after mount (null on unmount); used for scroll sync. */
+  onViewReady?: (view: EditorView | null) => void;
 }
 
 /**
@@ -20,12 +22,19 @@ interface MarkdownEditorProps {
  * The view is created once on mount; callbacks are routed through refs so
  * re-renders never tear down editor state (selection, undo history, scroll).
  */
-export function MarkdownEditor({ initialDoc, onChange, onSave }: MarkdownEditorProps) {
+export function MarkdownEditor({
+  initialDoc,
+  onChange,
+  onSave,
+  onViewReady,
+}: MarkdownEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const onChangeRef = useRef(onChange);
   const onSaveRef = useRef(onSave);
+  const onViewReadyRef = useRef(onViewReady);
   onChangeRef.current = onChange;
   onSaveRef.current = onSave;
+  onViewReadyRef.current = onViewReady;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -57,7 +66,11 @@ export function MarkdownEditor({ initialDoc, onChange, onSave }: MarkdownEditorP
     });
 
     const view = new EditorView({ state, parent: containerRef.current });
-    return () => view.destroy();
+    onViewReadyRef.current?.(view);
+    return () => {
+      onViewReadyRef.current?.(null);
+      view.destroy();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only by design
   }, []);
 

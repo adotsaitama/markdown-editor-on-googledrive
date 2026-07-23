@@ -129,6 +129,60 @@
   padding: 0 0 0 0.35rem;
 }
 
+/* --- split view (editor | preview) --- */
+.app-split {
+  max-width: 1500px;
+}
+
+.split-view {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  /* header + toolbar + paddings; both panes scroll internally */
+  height: calc(100vh - 11rem);
+  min-height: 320px;
+}
+
+.pane {
+  min-width: 0;
+}
+
+.pane-editor {
+  overflow: hidden;
+}
+
+.pane-editor .editor-container,
+.pane-editor .cm-editor {
+  height: 100%;
+}
+
+/* Beats `.editor-container .cm-editor { min-height: 60vh }` below. */
+.pane-editor .editor-container .cm-editor {
+  min-height: 0;
+}
+
+.pane-preview {
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 1rem;
+}
+
+@media (max-width: 900px) {
+  .split-view {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .pane-editor .editor-container .cm-editor {
+    height: 45vh;
+  }
+
+  .pane-preview {
+    max-height: 45vh;
+  }
+}
+
 /* --- CodeMirror editor --- */
 .editor-container .cm-editor {
   border: 1px solid var(--border);

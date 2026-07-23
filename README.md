@@ -2,8 +2,9 @@
 
 Google Drive 上の Markdown ファイル（`.md`）を、Drive の「アプリで開く」から起動してブラウザで閲覧・編集するための独立した Web アプリ。
 
-> **現在のフェーズ: フェーズ2（編集と上書き保存）**
-> CodeMirror 6 による編集と、Drive API `PATCH`（uploadType=media）による上書き保存に対応。
+> **現在のフェーズ: フェーズ3（分割表示とスクロール同期）**
+> 編集 / 分割 / プレビューの 3 モード。分割表示では remark AST のソース行番号
+> （`data-line`）を使ったエディタ ↔ プレビューの双方向スクロール同期に対応。
 
 ## 技術スタック
 
@@ -79,12 +80,14 @@ Drive の「アプリで開く」に表示するには、Google Workspace Market
 ```
 src/
   lib/
-    driveState.ts     # ?state= のパース → fileId 抽出
-    driveApi.ts       # Drive REST API v3 ラッパ（meta / alt=media / PATCH upload）
+    driveState.ts        # ?state= のパース → fileId 抽出
+    driveApi.ts          # Drive REST API v3 ラッパ（meta / alt=media / PATCH upload）
+    rehypeSourceLine.ts  # プレビュー要素に data-line（ソース行）を付与
   hooks/
     useGoogleAuth.ts     # GIS OAuth トークンクライアント
     useDriveFile.ts      # TanStack Query によるファイル取得
     useSaveDriveFile.ts  # useMutation による上書き保存（成功時にキャッシュ同期）
+    useScrollSync.ts     # data-line を使った双方向スクロール同期
   components/
     LoginButton.tsx
     MarkdownEditor.tsx   # CodeMirror 6 ラッパ（Mod-s 保存 / ダークテーマ対応）
@@ -98,4 +101,4 @@ src/
 
 - [x] **フェーズ1**: Drive からの起動・OAuth・閲覧（Read-Only）
 - [x] **フェーズ2**: CodeMirror 6 統合・`PATCH` による上書き保存
-- [ ] **フェーズ3**: Editor/Preview 分割・AST スクロール同期
+- [x] **フェーズ3**: Editor/Preview 分割・AST スクロール同期

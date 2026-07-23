@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import type { EditorView } from "@codemirror/view";
 import { LoginButton } from "./components/LoginButton";
 import { ErrorFallback } from "./components/ErrorFallback";
 import { MarkdownPreview } from "./components/MarkdownPreview";
@@ -6,11 +7,12 @@ import { MarkdownEditor } from "./components/MarkdownEditor";
 import { useGoogleAuth } from "./hooks/useGoogleAuth";
 import { useDriveFile } from "./hooks/useDriveFile";
 import { useSaveDriveFile } from "./hooks/useSaveDriveFile";
+import { useScrollSync } from "./hooks/useScrollSync";
 import { DriveApiError } from "./lib/driveApi";
 import { extractOpenFileId } from "./lib/driveState";
 import "./App.css";
 
-type ViewMode = "edit" | "preview";
+type ViewMode = "edit" | "split" | "preview";
 
 export default function App() {
   // The launch file id is fixed for this page load; derive it once.
@@ -20,12 +22,22 @@ export default function App() {
   const file = useDriveFile(fileId, auth.accessToken);
   const save = useSaveDriveFile(fileId, auth.accessToken);
 
-  const [mode, setMode] = useState<ViewMode>("edit");
+  // Default to split view on screens wide enough to fit both panes.
+  const [mode, setMode] = useState<ViewMode>(() =>
+    window.innerWidth >= 960 ? "split" : "edit",
+  );
   // Local edits; null until the user types. Saved content is the baseline.
   const [draft, setDraft] = useState<string | null>(null);
 
+  // Scroll-sync endpoints (state, not refs, so the hook re-runs when they mount).
+  const [editorView, setEditorView] = useState<EditorView | null>(null);
+  const [previewPane, setPreviewPane] = useState<HTMLDivElement | null>(null);
+  useScrollSync(editorView, previewPane, mode === "split");
+
   const savedContent = file.data?.content ?? null;
   const currentContent = draft ?? savedContent;
+  // Low-priority preview updates keep typing responsive on large documents.
+  const deferredContent = useDeferredValue(currentContent);
   const isDirty = draft !== null && savedContent !== null && draft !== savedContent;
 
   const handleSave = useCallback(() => {
@@ -57,7 +69,7 @@ export default function App() {
   }, [isDirty]);
 
   return (
-    <div className="app">
+    <div className={mode === "split" ? "app app-split" : "app"}>
       <header className="app-header">
         <h1>Drive Markdown Editor</h1>
         <span className="phase-badge">Phase 2 · 編集</span>
@@ -160,22 +172,23 @@ export default function App() {
         <>
           <div className="toolbar">
             <div className="mode-tabs" role="tablist">
-              <button
-                role="tab"
-                aria-selected={mode === "edit"}
-                className={mode === "edit" ? "tab active" : "tab"}
-                onClick={() => setMode("edit")}
-              >
-                編集
-              </button>
-              <button
-                role="tab"
-                aria-selected={mode === "preview"}
-                className={mode === "preview" ? "tab active" : "tab"}
-                onClick={() => setMode("preview")}
-              >
-                プレビュー
-              </button>
+              {(
+                [
+                  ["edit", "編集"],
+                  ["split", "分割"],
+                  ["preview", "プレビュー"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  role="tab"
+                  aria-selected={mode === value}
+                  className={mode === value ? "tab active" : "tab"}
+                  onClick={() => setMode(value)}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
             <div className="save-area">
@@ -191,7 +204,7 @@ export default function App() {
             </div>
           </div>
 
-          {mode === "edit" ? (
+          {mode === "edit" && (
             <MarkdownEditor
               // Remount if the saved file identity changes (not on each keystroke).
               key={file.data.meta.id}
@@ -199,9 +212,24 @@ export default function App() {
               onChange={setDraft}
               onSave={handleSave}
             />
-          ) : (
-            <MarkdownPreview content={currentContent} />
           )}
+          {mode === "split" && (
+            <div className="split-view">
+              <div className="pane pane-editor">
+                <MarkdownEditor
+                  key={file.data.meta.id}
+                  initialDoc={currentContent}
+                  onChange={setDraft}
+                  onSave={handleSave}
+                  onViewReady={setEditorView}
+                />
+              </div>
+              <div className="pane pane-preview" ref={setPreviewPane}>
+                <MarkdownPreview content={deferredContent ?? ""} />
+              </div>
+            </div>
+          )}
+          {mode === "preview" && <MarkdownPreview content={currentContent} />}
         </>
       );
     }
