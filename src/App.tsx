@@ -28,14 +28,35 @@ export default function App() {
 
   function renderBody() {
     // 1. No file id in the URL — app was not launched from Drive's "Open with".
+    //    Still offer sign-in here: consenting to drive.install is what registers
+    //    the app in Drive's "Open with" menu in the first place.
     if (!fileId) {
       return (
         <div className="notice">
           <h2>ファイルが指定されていません</h2>
           <p>
             このアプリは Google Drive の「アプリで開く」から <code>.md</code> ファイルを開くと起動します。
-            URL に有効な <code>state</code> パラメータ（<code>action: "open"</code>）が必要です。
           </p>
+          {auth.isConfigured && !auth.accessToken && (
+            <>
+              <p>
+                初めて使う場合は、まずここでログインして Google Drive にアプリを登録してください
+                （「アプリで開く」メニューに表示されるようになります）。
+              </p>
+              <LoginButton
+                onClick={auth.signIn}
+                disabled={!auth.isReady}
+                isAuthenticating={auth.isAuthenticating}
+              />
+              {auth.error && <p className="inline-error">{auth.error}</p>}
+            </>
+          )}
+          {auth.accessToken && (
+            <p>
+              ✅ ログインしました。アプリが Google Drive に登録されました。
+              Drive で <code>.md</code> ファイルを右クリック →「アプリで開く」から起動してください。
+            </p>
+          )}
         </div>
       );
     }
