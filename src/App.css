@@ -44,6 +44,104 @@
   padding-top: 1.5rem;
 }
 
+.dirty-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 0.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
+/* --- toolbar (edit / preview + save) --- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.mode-tabs {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tab {
+  border: none;
+  background: var(--bg);
+  color: var(--muted);
+  padding: 0.35rem 1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.save-area {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.save-button {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 1.25rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-status {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.save-status-dirty {
+  color: var(--accent);
+}
+
+.save-status-error {
+  color: var(--error-fg);
+}
+
+.link-button {
+  border: none;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0 0 0 0.35rem;
+}
+
+/* --- CodeMirror editor --- */
+.editor-container .cm-editor {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 60vh;
+  font-size: 0.95rem;
+}
+
+.editor-container .cm-editor.cm-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
 /* --- notices / states --- */
 .notice {
   text-align: center;

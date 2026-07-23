@@ -1,11 +1,16 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LoginButton } from "./components/LoginButton";
 import { ErrorFallback } from "./components/ErrorFallback";
 import { MarkdownPreview } from "./components/MarkdownPreview";
+import { MarkdownEditor } from "./components/MarkdownEditor";
 import { useGoogleAuth } from "./hooks/useGoogleAuth";
 import { useDriveFile } from "./hooks/useDriveFile";
+import { useSaveDriveFile } from "./hooks/useSaveDriveFile";
+import { DriveApiError } from "./lib/driveApi";
 import { extractOpenFileId } from "./lib/driveState";
 import "./App.css";
+
+type ViewMode = "edit" | "preview";
 
 export default function App() {
   // The launch file id is fixed for this page load; derive it once.
@@ -13,13 +18,55 @@ export default function App() {
 
   const auth = useGoogleAuth();
   const file = useDriveFile(fileId, auth.accessToken);
+  const save = useSaveDriveFile(fileId, auth.accessToken);
+
+  const [mode, setMode] = useState<ViewMode>("edit");
+  // Local edits; null until the user types. Saved content is the baseline.
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const savedContent = file.data?.content ?? null;
+  const currentContent = draft ?? savedContent;
+  const isDirty = draft !== null && savedContent !== null && draft !== savedContent;
+
+  const handleSave = useCallback(() => {
+    if (draft === null || draft === savedContent || save.isPending) return;
+    save.mutate(draft);
+  }, [draft, savedContent, save]);
+
+  // Ctrl/Cmd+S anywhere on the page (the editor also binds Mod-s itself).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleSave]);
+
+  // Warn before closing the tab with unsaved changes.
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>Drive Markdown Editor</h1>
-        <span className="phase-badge">Phase 1 · 閲覧のみ</span>
-        {file.data && <span className="file-name">{file.data.meta.name}</span>}
+        <span className="phase-badge">Phase 2 · 編集</span>
+        {file.data && (
+          <span className="file-name">
+            {file.data.meta.name}
+            {isDirty && <span className="dirty-dot" title="未保存の変更があります" />}
+          </span>
+        )}
       </header>
 
       <main className="app-main">{renderBody()}</main>
@@ -88,7 +135,7 @@ export default function App() {
     }
 
     // 4. Loading file.
-    if (file.isPending || file.isFetching) {
+    if (file.isPending) {
       return (
         <div className="notice">
           <p className="loading">読み込み中…</p>
@@ -107,11 +154,83 @@ export default function App() {
       );
     }
 
-    // 6. Success — render preview.
-    if (file.data) {
-      return <MarkdownPreview content={file.data.content} />;
+    // 6. Success — editor / preview with save toolbar.
+    if (file.data && currentContent !== null) {
+      return (
+        <>
+          <div className="toolbar">
+            <div className="mode-tabs" role="tablist">
+              <button
+                role="tab"
+                aria-selected={mode === "edit"}
+                className={mode === "edit" ? "tab active" : "tab"}
+                onClick={() => setMode("edit")}
+              >
+                編集
+              </button>
+              <button
+                role="tab"
+                aria-selected={mode === "preview"}
+                className={mode === "preview" ? "tab active" : "tab"}
+                onClick={() => setMode("preview")}
+              >
+                プレビュー
+              </button>
+            </div>
+
+            <div className="save-area">
+              {renderSaveStatus()}
+              <button
+                className="save-button"
+                onClick={handleSave}
+                disabled={!isDirty || save.isPending}
+                title="Ctrl+S / ⌘S"
+              >
+                {save.isPending ? "保存中…" : "保存"}
+              </button>
+            </div>
+          </div>
+
+          {mode === "edit" ? (
+            <MarkdownEditor
+              // Remount if the saved file identity changes (not on each keystroke).
+              key={file.data.meta.id}
+              initialDoc={currentContent}
+              onChange={setDraft}
+              onSave={handleSave}
+            />
+          ) : (
+            <MarkdownPreview content={currentContent} />
+          )}
+        </>
+      );
     }
 
+    return null;
+  }
+
+  function renderSaveStatus() {
+    if (save.isError) {
+      const err = save.error;
+      const needsReauth = err instanceof DriveApiError && err.status === 401;
+      return (
+        <span className="save-status save-status-error">
+          保存に失敗しました（{err instanceof DriveApiError ? `HTTP ${err.status}` : err.message}）
+          {needsReauth && (
+            <button className="link-button" onClick={auth.signIn}>
+              再ログイン
+            </button>
+          )}
+        </span>
+      );
+    }
+    if (save.isPending) return null; // the button already says 保存中…
+    if (save.isSuccess && !isDirty) {
+      return <span className="save-status">✓ 保存しました</span>;
+    }
+    if (isDirty) {
+      return <span className="save-status save-status-dirty">未保存の変更</span>;
+    }
     return null;
   }
 }

@@ -1,7 +1,9 @@
-// Thin wrapper over the Google Drive REST API (v3) for Phase 1 (read-only).
+// Thin wrapper over the Google Drive REST API (v3).
 // Reference: https://developers.google.com/drive/api/reference/rest/v3/files/get
+// Upload:    https://developers.google.com/drive/api/guides/manage-uploads#simple
 
 const DRIVE_FILES_ENDPOINT = "https://www.googleapis.com/drive/v3/files";
+const DRIVE_UPLOAD_ENDPOINT = "https://www.googleapis.com/upload/drive/v3/files";
 
 export interface DriveFileMeta {
   id: string;
@@ -20,7 +22,7 @@ export class DriveApiError extends Error {
   }
 }
 
-function authHeaders(accessToken: string): HeadersInit {
+function authHeaders(accessToken: string): Record<string, string> {
   return { Authorization: `Bearer ${accessToken}` };
 }
 
@@ -44,6 +46,28 @@ export async function fetchDriveFileMeta(
 ): Promise<DriveFileMeta> {
   const url = `${DRIVE_FILES_ENDPOINT}/${encodeURIComponent(fileId)}?fields=id,name,mimeType`;
   const res = await fetch(url, { headers: authHeaders(accessToken), signal });
+  if (!res.ok) throw await toApiError(res);
+  return (await res.json()) as DriveFileMeta;
+}
+
+/**
+ * Overwrite the file's content via a simple media upload (PATCH).
+ * Drive keeps previous revisions automatically; metadata (name etc.) is untouched.
+ */
+export async function updateDriveFileContent(
+  fileId: string,
+  accessToken: string,
+  content: string,
+): Promise<DriveFileMeta> {
+  const url = `${DRIVE_UPLOAD_ENDPOINT}/${encodeURIComponent(fileId)}?uploadType=media&fields=id,name,mimeType`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      ...authHeaders(accessToken),
+      "Content-Type": "text/markdown; charset=UTF-8",
+    },
+    body: content,
+  });
   if (!res.ok) throw await toApiError(res);
   return (await res.json()) as DriveFileMeta;
 }
