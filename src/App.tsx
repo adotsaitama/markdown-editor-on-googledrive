@@ -6,6 +6,7 @@ import { MarkdownPreview } from "./components/MarkdownPreview";
 import { MarkdownEditor } from "./components/MarkdownEditor";
 import { FormatToolbar } from "./components/FormatToolbar";
 import { HelpModal } from "./components/HelpModal";
+import { InlineEditPopover } from "./components/InlineEditPopover";
 import { IconEye, IconHelp, IconMoon, IconPencil, IconSplit, IconSun } from "./components/icons";
 import { useGoogleAuth } from "./hooks/useGoogleAuth";
 import { useDriveFile } from "./hooks/useDriveFile";
@@ -71,6 +72,66 @@ export default function App() {
       editorView.focus();
     },
     [editorView],
+  );
+
+  // --- Inline source editing in preview-only mode ---------------------------
+  // Clicking a rendered block resolves its source line via the data-line
+  // attribute (the same mapping the scroll sync uses), then a tooltip-style
+  // editor shows ±2 lines. Applying dispatches through the (hidden but
+  // mounted) CodeMirror view so undo / dirty state / save all stay coherent.
+  interface InlineEditState {
+    from: number;
+    to: number;
+    startLine: number;
+    endLine: number;
+    text: string;
+    anchor: { top: number; left: number };
+  }
+  const [inlineEdit, setInlineEdit] = useState<InlineEditState | null>(null);
+
+  // Leaving preview mode dismisses the popover.
+  useEffect(() => {
+    if (mode !== "preview") setInlineEdit(null);
+  }, [mode]);
+
+  const handlePreviewClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (mode !== "preview" || !editorView) return;
+      const target = e.target as HTMLElement;
+      if (target.closest("a")) return; // let links behave normally
+      const el = target.closest<HTMLElement>("[data-line]");
+      if (!el) return;
+      const line = Number(el.dataset.line);
+      if (!Number.isFinite(line)) return;
+
+      const doc = editorView.state.doc;
+      const startLine = Math.max(1, line - 2);
+      const endLine = Math.min(doc.lines, line + 2);
+      const from = doc.line(startLine).from;
+      const to = doc.line(endLine).to;
+      const rect = el.getBoundingClientRect();
+      setInlineEdit({
+        from,
+        to,
+        startLine,
+        endLine,
+        text: doc.sliceString(from, to),
+        anchor: { top: rect.bottom, left: rect.left },
+      });
+    },
+    [mode, editorView],
+  );
+
+  const applyInlineEdit = useCallback(
+    (text: string) => {
+      if (!inlineEdit || !editorView) return;
+      editorView.dispatch({
+        changes: { from: inlineEdit.from, to: inlineEdit.to, insert: text },
+        userEvent: "input",
+      });
+      setInlineEdit(null);
+    },
+    [inlineEdit, editorView],
   );
 
   const handleSave = useCallback(() => {
@@ -290,10 +351,22 @@ export default function App() {
               className="pane pane-preview"
               ref={setPreviewPane}
               aria-hidden={mode === "edit"}
+              onClick={handlePreviewClick}
             >
               <MarkdownPreview content={deferredContent ?? ""} resolveImage={resolveImage} />
             </div>
           </div>
+
+          {inlineEdit && (
+            <InlineEditPopover
+              anchor={inlineEdit.anchor}
+              startLine={inlineEdit.startLine}
+              endLine={inlineEdit.endLine}
+              initialText={inlineEdit.text}
+              onApply={applyInlineEdit}
+              onClose={() => setInlineEdit(null)}
+            />
+          )}
 
           {lintOpen && (
             <div className="lint-panel">
