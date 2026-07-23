@@ -5,7 +5,9 @@ import { Compartment, EditorState } from "@codemirror/state";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { changeListIndent, insertLink, toggleInlineMark } from "../lib/markdownCommands";
+import { changeListIndent } from "../lib/markdownCommands";
+import { EDITOR_COMMANDS } from "../lib/editorCommands";
+import { getShortcuts } from "../lib/shortcutConfig";
 
 interface MarkdownEditorProps {
   /** Document shown when the editor mounts. Later changes do not reset the view. */
@@ -54,22 +56,21 @@ export function MarkdownEditor({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const shortcuts = getShortcuts();
     const state = EditorState.create({
       doc: initialDoc,
       extensions: [
-        // These must precede basicSetup so they win over any default binding.
+        // Config-driven command shortcuts (shortcutConfig.ts). These must
+        // precede basicSetup so they win over any default binding.
         keymap.of([
-          {
-            key: "Mod-s",
+          ...EDITOR_COMMANDS.filter((c) => shortcuts[c.id]).map((c) => ({
+            key: shortcuts[c.id],
             preventDefault: true,
-            run: () => {
-              onSaveRef.current();
+            run: (v: EditorView) => {
+              c.run(v, { save: () => onSaveRef.current() });
               return true;
             },
-          },
-          { key: "Mod-b", run: (v) => toggleInlineMark(v, "**") },
-          { key: "Mod-i", run: (v) => toggleInlineMark(v, "*") },
-          { key: "Mod-k", preventDefault: true, run: (v) => insertLink(v) },
+          })),
           // List items: Tab / Shift-Tab change nesting depth. Outside lists
           // the binding returns false and Tab keeps its default behavior.
           {

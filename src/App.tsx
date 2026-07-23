@@ -5,7 +5,8 @@ import { ErrorFallback } from "./components/ErrorFallback";
 import { MarkdownPreview } from "./components/MarkdownPreview";
 import { MarkdownEditor } from "./components/MarkdownEditor";
 import { FormatToolbar } from "./components/FormatToolbar";
-import { IconEye, IconMoon, IconPencil, IconSplit, IconSun } from "./components/icons";
+import { HelpModal } from "./components/HelpModal";
+import { IconEye, IconHelp, IconMoon, IconPencil, IconSplit, IconSun } from "./components/icons";
 import { useGoogleAuth } from "./hooks/useGoogleAuth";
 import { useDriveFile } from "./hooks/useDriveFile";
 import { useSaveDriveFile } from "./hooks/useSaveDriveFile";
@@ -58,6 +59,7 @@ export default function App() {
   // Background lint (debounced, lazy-loaded); details live in the bottom panel.
   const lintIssues = useMarkdownLint(currentContent);
   const [lintOpen, setLintOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const jumpToLine = useCallback(
     (line: number) => {
@@ -156,6 +158,14 @@ export default function App() {
             </>
           )}
           <button
+            className="icon-button"
+            onClick={() => setHelpOpen(true)}
+            title="ヘルプ・ショートカット一覧"
+            aria-label="ヘルプ"
+          >
+            <IconHelp />
+          </button>
+          <button
             className="icon-button theme-toggle"
             onClick={toggleTheme}
             title={theme === "dark" ? "ライトモードに切り替え" : "ダークモードに切り替え"}
@@ -167,6 +177,8 @@ export default function App() {
       </header>
 
       <main className="app-main">{renderBody()}</main>
+
+      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
     </div>
   );
 

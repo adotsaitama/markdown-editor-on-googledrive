@@ -1,18 +1,8 @@
-import { Fragment, useEffect, useRef, useState } from "react";
-import { undo, redo } from "@codemirror/commands";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { EditorView } from "@codemirror/view";
-import {
-  insertHorizontalRule,
-  insertLink,
-  insertTable,
-  setHeading,
-  toggleCodeBlock,
-  toggleInlineMark,
-  toggleLinePrefix,
-  toggleOrderedList,
-  toggleTaskList,
-} from "../lib/markdownCommands";
-import { formatDocument } from "../lib/formatDocument";
+import { getCommand, type CommandId } from "../lib/editorCommands";
+import { insertTable } from "../lib/markdownCommands";
+import { formatShortcut, getShortcuts } from "../lib/shortcutConfig";
 import {
   IconBold,
   IconCheckSquare,
@@ -36,113 +26,98 @@ interface FormatToolbarProps {
   disabled: boolean;
 }
 
-interface Item {
-  label: string;
+interface ToolbarItem {
+  id: CommandId;
   /** Icon element, or short text (e.g. "H1") rendered as a text button. */
   icon: JSX.Element | string;
-  action: (v: EditorView) => unknown;
 }
 
-/** Inline code for single-line selections, fenced block for multi-line. */
-function smartCode(v: EditorView) {
-  const { from, to } = v.state.selection.main;
-  return v.state.sliceDoc(from, to).includes("\n")
-    ? toggleCodeBlock(v)
-    : toggleInlineMark(v, "`");
-}
-
-/** Grouped, rich-text-style Markdown formatting bar (à la Joplin / Inkdrop). */
-const GROUPS: Item[][] = [
-  // history
+/** Toolbar layout: which commands appear, grouped (à la Joplin / Inkdrop). */
+const LAYOUT: ToolbarItem[][] = [
   [
-    { label: "元に戻す (Ctrl+Z)", icon: <IconUndo />, action: (v) => (undo(v), v.focus()) },
-    { label: "やり直し (Ctrl+Y)", icon: <IconRedo />, action: (v) => (redo(v), v.focus()) },
+    { id: "undo", icon: <IconUndo /> },
+    { id: "redo", icon: <IconRedo /> },
   ],
-  // inline marks
   [
-    { label: "太字 (Ctrl+B)", icon: <IconBold />, action: (v) => toggleInlineMark(v, "**") },
-    { label: "斜体 (Ctrl+I)", icon: <IconItalic />, action: (v) => toggleInlineMark(v, "*") },
-    { label: "打ち消し線", icon: <IconStrikethrough />, action: (v) => toggleInlineMark(v, "~~") },
-    { label: "コード（複数行選択でコードブロック）", icon: <IconCode />, action: smartCode },
+    { id: "bold", icon: <IconBold /> },
+    { id: "italic", icon: <IconItalic /> },
+    { id: "strikethrough", icon: <IconStrikethrough /> },
+    { id: "code", icon: <IconCode /> },
   ],
-  // headings (direct buttons: one less click than a dropdown)
   [
-    { label: "見出し1", icon: "H1", action: (v) => setHeading(v, 1) },
-    { label: "見出し2", icon: "H2", action: (v) => setHeading(v, 2) },
-    { label: "見出し3", icon: "H3", action: (v) => setHeading(v, 3) },
+    { id: "heading1", icon: "H1" },
+    { id: "heading2", icon: "H2" },
+    { id: "heading3", icon: "H3" },
   ],
-  // blocks / lists
   [
-    { label: "箇条書き", icon: <IconListUl />, action: (v) => toggleLinePrefix(v, "- ") },
-    { label: "番号付きリスト", icon: <IconListOl />, action: (v) => toggleOrderedList(v) },
-    { label: "チェックリスト", icon: <IconCheckSquare />, action: (v) => toggleTaskList(v) },
-    { label: "引用", icon: <IconQuote />, action: (v) => toggleLinePrefix(v, "> ") },
+    { id: "bulletList", icon: <IconListUl /> },
+    { id: "orderedList", icon: <IconListOl /> },
+    { id: "taskList", icon: <IconCheckSquare /> },
+    { id: "quote", icon: <IconQuote /> },
   ],
-  // insert (the table button is rendered separately with its size picker)
   [
-    { label: "リンク (Ctrl+K)", icon: <IconLink />, action: (v) => insertLink(v) },
-    { label: "罫線", icon: <IconMinus />, action: (v) => insertHorizontalRule(v) },
+    { id: "link", icon: <IconLink /> },
+    { id: "horizontalRule", icon: <IconMinus /> },
   ],
 ];
 
-/** Document-wide actions appended after the table picker. */
-const TAIL_ITEMS: Item[] = [
-  {
-    label: "文書全体を整形 (Prettier)",
-    icon: <IconWand />,
-    action: (v) => void formatDocument(v),
-  },
-];
-
-const PICKER_COLS = 6;
-const PICKER_ROWS = 5;
+const NOOP_CTX = { save: () => {} };
 
 export function FormatToolbar({ view, disabled }: FormatToolbarProps) {
   const off = disabled || !view;
+  const shortcuts = useMemo(() => getShortcuts(), []);
+
+  const tooltip = (id: CommandId) => {
+    const cmd = getCommand(id);
+    const key = shortcuts[id];
+    let text = cmd.label;
+    if (key) text += `（${formatShortcut(key)}）`;
+    if (cmd.hint) text += ` — ${cmd.hint}`;
+    return text;
+  };
+
+  const renderButton = ({ id, icon }: ToolbarItem) => (
+    <button
+      key={id}
+      type="button"
+      className={typeof icon === "string" ? "icon-button text-button" : "icon-button"}
+      title={tooltip(id)}
+      aria-label={getCommand(id).label}
+      disabled={off}
+      onClick={() => view && getCommand(id).run(view, NOOP_CTX)}
+    >
+      {icon}
+    </button>
+  );
 
   return (
     <div className="format-toolbar" role="toolbar" aria-label="書式">
-      {GROUPS.map((group, gi) => (
+      {LAYOUT.map((group, gi) => (
         <Fragment key={gi}>
           {gi > 0 && <span className="toolbar-sep" />}
-          {group.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              className={
-                typeof item.icon === "string" ? "icon-button text-button" : "icon-button"
-              }
-              title={item.label}
-              aria-label={item.label}
-              disabled={off}
-              onClick={() => view && item.action(view)}
-            >
-              {item.icon}
-            </button>
-          ))}
+          {group.map(renderButton)}
         </Fragment>
       ))}
-      <TablePicker view={view} disabled={off} />
+      <TablePicker view={view} disabled={off} tooltip={tooltip("table")} />
       <span className="toolbar-sep" />
-      {TAIL_ITEMS.map((item) => (
-        <button
-          key={item.label}
-          type="button"
-          className="icon-button"
-          title={item.label}
-          aria-label={item.label}
-          disabled={off}
-          onClick={() => view && item.action(view)}
-        >
-          {item.icon}
-        </button>
-      ))}
+      {renderButton({ id: "formatDoc", icon: <IconWand /> })}
     </div>
   );
 }
 
+const PICKER_COLS = 6;
+const PICKER_ROWS = 5;
+
 /** Table button with an Excel-style size picker (cols × body rows). */
-function TablePicker({ view, disabled }: { view: EditorView | null; disabled: boolean }) {
+function TablePicker({
+  view,
+  disabled,
+  tooltip,
+}: {
+  view: EditorView | null;
+  disabled: boolean;
+  tooltip: string;
+}) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState<[number, number]>([1, 1]); // [rows, cols]
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -171,7 +146,7 @@ function TablePicker({ view, disabled }: { view: EditorView | null; disabled: bo
       <button
         type="button"
         className="icon-button"
-        title="テーブルを挿入"
+        title={tooltip}
         aria-label="テーブルを挿入"
         aria-expanded={open}
         disabled={disabled}

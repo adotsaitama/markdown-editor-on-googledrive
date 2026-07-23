@@ -146,6 +146,14 @@ export const IconMinus = () => (
   </Svg>
 );
 
+export const IconHelp = () => (
+  <Svg>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </Svg>
+);
+
 export const IconWand = () => (
   <Svg>
     <path d="M15 4V2M15 10V8M11.5 5.5h-2M20.5 5.5h-2M17.8 8.3l1.4 1.4M17.8 2.7l1.4-1.4M12.2 2.7l-1.4-1.4" />

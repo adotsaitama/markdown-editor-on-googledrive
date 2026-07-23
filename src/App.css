@@ -390,6 +390,98 @@
   font-size: 0.78rem;
 }
 
+/* --- help modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: min(640px, calc(100vw - 2rem));
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.modal-body {
+  padding: 1rem 1.25rem 1.5rem;
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+
+.modal-body h3 {
+  font-size: 0.95rem;
+  margin: 1.2rem 0 0.5rem;
+}
+
+.modal-body h3:first-child {
+  margin-top: 0;
+}
+
+.modal-body ul {
+  padding-left: 1.2rem;
+  margin: 0.5rem 0;
+}
+
+.modal-body li {
+  margin: 0.35rem 0;
+}
+
+.shortcut-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.shortcut-table td {
+  padding: 0.3rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.shortcut-table td:first-child {
+  white-space: nowrap;
+  width: 11em;
+}
+
+kbd {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.1);
+  padding: 0.05rem 0.45rem;
+  font-family: inherit;
+  font-size: 0.85em;
+}
+
+.help-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
+}
+
 /* --- image fallbacks in preview --- */
 .img-fallback {
   display: inline-block;
