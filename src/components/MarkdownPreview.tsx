@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 import { rehypeSourceLine } from "../lib/rehypeSourceLine";
 
 interface MarkdownPreviewProps {
@@ -14,7 +15,10 @@ interface MarkdownPreviewProps {
 export function MarkdownPreview({ content }: MarkdownPreviewProps) {
   return (
     <article className="markdown-body">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSourceLine]}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeSourceLine, rehypeHighlight]}
+      >
         {content}
       </ReactMarkdown>
     </article>

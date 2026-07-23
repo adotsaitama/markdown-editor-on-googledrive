@@ -104,6 +104,95 @@ export function toggleOrderedList(view: EditorView): boolean {
   return true;
 }
 
+const LIST_ITEM_RE = /^\s*(?:[-*+]|\d+\.)\s/;
+const LIST_INDENT = "    ";
+
+/**
+ * Indent (dir=1) / dedent (dir=-1) selected list items by 4 spaces.
+ * Returns false when the selection is not entirely list items, so Tab
+ * falls through to its default behavior outside lists.
+ */
+export function changeListIndent(view: EditorView, dir: 1 | -1): boolean {
+  const lines = selectedLines(view);
+  if (!lines.every((l) => LIST_ITEM_RE.test(l.text))) return false;
+
+  const changes = [];
+  for (const l of lines) {
+    if (dir === 1) {
+      changes.push({ from: l.from, insert: LIST_INDENT });
+    } else {
+      const ws = /^[ \t]+/.exec(l.text)?.[0] ?? "";
+      if (ws.length === 0) continue;
+      changes.push({ from: l.from, to: l.from + Math.min(ws.length, LIST_INDENT.length) });
+    }
+  }
+  if (changes.length > 0) {
+    view.dispatch({ changes, scrollIntoView: true, userEvent: "input" });
+  }
+  return true;
+}
+
+const FENCE_RE = /^```/;
+
+/**
+ * Wrap the selected lines in a fenced code block, or unwrap when the
+ * selection is already directly fenced. After wrapping, the cursor sits
+ * right after the opening ``` so a language can be typed immediately.
+ */
+export function toggleCodeBlock(view: EditorView): boolean {
+  const { state } = view;
+  const range = state.selection.main;
+  const firstLine = state.doc.lineAt(range.from);
+  const lastLine = state.doc.lineAt(range.to);
+  const before = firstLine.number > 1 ? state.doc.line(firstLine.number - 1) : null;
+  const after = lastLine.number < state.doc.lines ? state.doc.line(lastLine.number + 1) : null;
+
+  if (before && after && FENCE_RE.test(before.text) && FENCE_RE.test(after.text)) {
+    view.dispatch({
+      changes: [
+        { from: before.from, to: firstLine.from },
+        { from: lastLine.to, to: after.to },
+      ],
+      scrollIntoView: true,
+      userEvent: "input",
+    });
+  } else {
+    view.dispatch({
+      changes: [
+        { from: firstLine.from, insert: "```\n" },
+        { from: lastLine.to, insert: "\n```" },
+      ],
+      selection: { anchor: firstLine.from + 3 },
+      scrollIntoView: true,
+      userEvent: "input",
+    });
+  }
+  view.focus();
+  return true;
+}
+
+/**
+ * Insert an empty GFM table (header + separator + `rows` body rows) on a
+ * new line after the current one, cursor placed in the first header cell.
+ */
+export function insertTable(view: EditorView, rows: number, cols: number): boolean {
+  const mkRow = (fill: string) => "|" + Array(cols).fill(fill).join("|") + "|";
+  const table = [mkRow("     "), mkRow(" --- "), ...Array.from({ length: rows }, () => mkRow("     "))].join("\n");
+
+  const { state } = view;
+  const line = state.doc.lineAt(state.selection.main.head);
+  const prefix = line.text.trim().length > 0 ? "\n\n" : "\n";
+  const insert = prefix + table + "\n";
+  view.dispatch({
+    changes: { from: line.to, insert },
+    selection: { anchor: line.to + prefix.length + 2 },
+    scrollIntoView: true,
+    userEvent: "input",
+  });
+  view.focus();
+  return true;
+}
+
 const TASK_RE = /^- \[[ xX]\]\s/;
 
 /** Toggle a task-list checkbox (`- [ ] `) on all selected lines. */

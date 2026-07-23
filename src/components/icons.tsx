@@ -131,6 +131,15 @@ export const IconCheckSquare = () => (
   </Svg>
 );
 
+export const IconTable = () => (
+  <Svg>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+    <line x1="9" y1="10" x2="9" y2="20" />
+    <line x1="15" y1="10" x2="15" y2="20" />
+  </Svg>
+);
+
 export const IconMinus = () => (
   <Svg>
     <line x1="4" y1="12" x2="20" y2="12" />

@@ -1,10 +1,12 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { undo, redo } from "@codemirror/commands";
 import type { EditorView } from "@codemirror/view";
 import {
   insertHorizontalRule,
   insertLink,
+  insertTable,
   setHeading,
+  toggleCodeBlock,
   toggleInlineMark,
   toggleLinePrefix,
   toggleOrderedList,
@@ -22,6 +24,7 @@ import {
   IconQuote,
   IconRedo,
   IconStrikethrough,
+  IconTable,
   IconUndo,
 } from "./icons";
 
@@ -38,6 +41,14 @@ interface Item {
   action: (v: EditorView) => unknown;
 }
 
+/** Inline code for single-line selections, fenced block for multi-line. */
+function smartCode(v: EditorView) {
+  const { from, to } = v.state.selection.main;
+  return v.state.sliceDoc(from, to).includes("\n")
+    ? toggleCodeBlock(v)
+    : toggleInlineMark(v, "`");
+}
+
 /** Grouped, rich-text-style Markdown formatting bar (à la Joplin / Inkdrop). */
 const GROUPS: Item[][] = [
   // history
@@ -50,7 +61,7 @@ const GROUPS: Item[][] = [
     { label: "太字 (Ctrl+B)", icon: <IconBold />, action: (v) => toggleInlineMark(v, "**") },
     { label: "斜体 (Ctrl+I)", icon: <IconItalic />, action: (v) => toggleInlineMark(v, "*") },
     { label: "打ち消し線", icon: <IconStrikethrough />, action: (v) => toggleInlineMark(v, "~~") },
-    { label: "インラインコード", icon: <IconCode />, action: (v) => toggleInlineMark(v, "`") },
+    { label: "コード（複数行選択でコードブロック）", icon: <IconCode />, action: smartCode },
   ],
   // headings (direct buttons: one less click than a dropdown)
   [
@@ -65,12 +76,15 @@ const GROUPS: Item[][] = [
     { label: "チェックリスト", icon: <IconCheckSquare />, action: (v) => toggleTaskList(v) },
     { label: "引用", icon: <IconQuote />, action: (v) => toggleLinePrefix(v, "> ") },
   ],
-  // insert
+  // insert (the table button is rendered separately with its size picker)
   [
     { label: "リンク (Ctrl+K)", icon: <IconLink />, action: (v) => insertLink(v) },
     { label: "罫線", icon: <IconMinus />, action: (v) => insertHorizontalRule(v) },
   ],
 ];
+
+const PICKER_COLS = 6;
+const PICKER_ROWS = 5;
 
 export function FormatToolbar({ view, disabled }: FormatToolbarProps) {
   const off = disabled || !view;
@@ -97,6 +111,80 @@ export function FormatToolbar({ view, disabled }: FormatToolbarProps) {
           ))}
         </Fragment>
       ))}
+      <TablePicker view={view} disabled={off} />
+    </div>
+  );
+}
+
+/** Table button with an Excel-style size picker (cols × body rows). */
+function TablePicker({ view, disabled }: { view: EditorView | null; disabled: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [hover, setHover] = useState<[number, number]>([1, 1]); // [rows, cols]
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  // Close on outside click / Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const [hr, hc] = hover;
+
+  return (
+    <div className="table-picker-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="icon-button"
+        title="テーブルを挿入"
+        aria-label="テーブルを挿入"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <IconTable />
+      </button>
+      {open && (
+        <div className="table-picker">
+          <div
+            className="table-picker-grid"
+            style={{ gridTemplateColumns: `repeat(${PICKER_COLS}, 1fr)` }}
+          >
+            {Array.from({ length: PICKER_ROWS * PICKER_COLS }, (_, i) => {
+              const r = Math.floor(i / PICKER_COLS) + 1;
+              const c = (i % PICKER_COLS) + 1;
+              const active = r <= hr && c <= hc;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  className={active ? "picker-cell active" : "picker-cell"}
+                  aria-label={`${c} 列 × ${r} 行`}
+                  onMouseEnter={() => setHover([r, c])}
+                  onFocus={() => setHover([r, c])}
+                  onClick={() => {
+                    if (view) insertTable(view, r, c);
+                    setOpen(false);
+                  }}
+                />
+              );
+            })}
+          </div>
+          <div className="table-picker-size">
+            {hc} 列 × {hr} 行（+ヘッダ）
+          </div>
+        </div>
+      )}
     </div>
   );
 }

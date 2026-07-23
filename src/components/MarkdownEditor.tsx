@@ -5,7 +5,7 @@ import { Compartment, EditorState } from "@codemirror/state";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { insertLink, toggleInlineMark } from "../lib/markdownCommands";
+import { changeListIndent, insertLink, toggleInlineMark } from "../lib/markdownCommands";
 
 interface MarkdownEditorProps {
   /** Document shown when the editor mounts. Later changes do not reset the view. */
@@ -61,6 +61,13 @@ export function MarkdownEditor({
           { key: "Mod-b", run: (v) => toggleInlineMark(v, "**") },
           { key: "Mod-i", run: (v) => toggleInlineMark(v, "*") },
           { key: "Mod-k", preventDefault: true, run: (v) => insertLink(v) },
+          // List items: Tab / Shift-Tab change nesting depth. Outside lists
+          // the binding returns false and Tab keeps its default behavior.
+          {
+            key: "Tab",
+            run: (v) => changeListIndent(v, 1),
+            shift: (v) => changeListIndent(v, -1),
+          },
         ]),
         basicSetup,
         markdown({ base: markdownLanguage, codeLanguages: languages }),
