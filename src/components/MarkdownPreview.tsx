@@ -1,13 +1,16 @@
-import { useEffect, useState, type ImgHTMLAttributes } from "react";
+import { useEffect, useState, type HTMLAttributes, type ImgHTMLAttributes } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { rehypeSourceLine } from "../lib/rehypeSourceLine";
+import { MermaidBlock } from "./MermaidBlock";
 
 export type ImageResolver = (src: string) => Promise<string | null>;
 
 interface MarkdownPreviewProps {
   content: string;
+  /** Dark theme flag (mermaid diagrams follow the app theme). */
+  dark?: boolean;
   /** Resolves relative `images/...` refs to displayable (blob) URLs. */
   resolveImage?: ImageResolver;
 }
@@ -22,19 +25,38 @@ function isRelativeSrc(src: string): boolean {
  * Each element carries a `data-line` attribute (source line) used by
  * the split view's scroll synchronization.
  */
-export function MarkdownPreview({ content, resolveImage }: MarkdownPreviewProps) {
+export function MarkdownPreview({ content, dark = false, resolveImage }: MarkdownPreviewProps) {
   return (
     <article className="markdown-body">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSourceLine, rehypeHighlight]}
+        // mermaid fences skip highlighting so their raw source reaches the
+        // code component below for diagram rendering.
+        rehypePlugins={[rehypeSourceLine, [rehypeHighlight, { plainText: ["mermaid"] }]]}
         components={{
           img: (props) => <DriveImage {...props} resolveImage={resolveImage} />,
+          code: (props) => <CodeOrMermaid {...props} dark={dark} />,
         }}
       >
         {content}
       </ReactMarkdown>
     </article>
+  );
+}
+
+function CodeOrMermaid({
+  className,
+  children,
+  dark,
+  ...rest
+}: HTMLAttributes<HTMLElement> & { dark: boolean }) {
+  if (/\blanguage-mermaid\b/.test(className ?? "")) {
+    return <MermaidBlock code={String(children).trim()} dark={dark} />;
+  }
+  return (
+    <code className={className} {...rest}>
+      {children}
+    </code>
   );
 }
 

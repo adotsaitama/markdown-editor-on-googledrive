@@ -379,7 +379,11 @@ export default function App() {
               aria-hidden={mode === "edit"}
               onClick={handlePreviewClick}
             >
-              <MarkdownPreview content={deferredContent ?? ""} resolveImage={resolveImage} />
+              <MarkdownPreview
+                content={deferredContent ?? ""}
+                dark={theme === "dark"}
+                resolveImage={resolveImage}
+              />
             </div>
           </div>
 

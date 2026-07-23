@@ -62,6 +62,9 @@ export function HelpModal({ onClose }: HelpModalProps) {
               <strong>テーブル</strong>: ツールバーの表アイコンからサイズを選んで空のテーブルを挿入。
             </li>
             <li>
+              <strong>Mermaid</strong>: <code>```mermaid</code> のコードブロックはプレビューで図として描画されます。
+            </li>
+            <li>
               <strong>Lint</strong>: 画面下部に markdownlint の結果を件数表示。
               クリックで詳細パネルが開き、各項目から該当行へジャンプできます。
             </li>
